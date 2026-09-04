@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "vacation3d/map",
+  "title": "Vacation 3D Map",
+  "category": "embed",
+  "icon": "location-alt",
+  "description": "Interaktive 3D-Karte einer Wanderung: Gelände, Luftbild, GPX-Tracks, Hütten, Kamerafahrt.",
+  "keywords": ["3d", "karte", "map", "gpx", "urlaub", "wandern"],
+  "textdomain": "vacation3d",
+  "attributes": {
+    "vacation": { "type": "string", "default": "" },
+    "height":   { "type": "number", "default": 600 }
+  },
+  "supports": {
+    "align": ["wide", "full"],
+    "html": false,
+    "multiple": true
+  },
+  "editorScript": "vacation3d-editor",
+  "editorStyle": "file:./editor.css"
+}
