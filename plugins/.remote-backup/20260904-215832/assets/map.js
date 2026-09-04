@@ -24,8 +24,6 @@
     ff:    '<svg viewBox="0 0 24 24"><path d="M3 5v14l8-7zm9 0v14l8-7z"/></svg>',
     next:  '<svg viewBox="0 0 24 24"><path d="M4 5v14l10-7zM16 5h3v14h-3z"/></svg>',
     mountain: '<svg viewBox="0 0 24 24"><path d="M2 20 L8 8 L12 14 L15 10 L22 20 Z"/></svg>',
-    fsEnter: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>',
-    fsExit:  '<svg viewBox="0 0 24 24"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></svg>',
   };
   const DEFAULTS = {
     colors: ['#ff3b1f', '#ffb020', '#25d0ff', '#8cff5e', '#e07bff', '#ffffff'],
@@ -125,36 +123,6 @@
         sky: { 'sky-color': '#7fb2ff', 'horizon-color': '#dbe9ff', 'fog-color': '#c8d8ee', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.75 },
       },
     });
-    // Fullscreen for the whole block (player, HUD and profile included). Phones cannot really use
-    // the map inside a post column, and iOS has no Fullscreen API for plain elements, so there
-    // is a CSS fallback: the container becomes position:fixed over the page.
-    let fsBtn = null, savedHeight = '';
-    const isFs = () => document.fullscreenElement === container || container.classList.contains('v3d-fs');
-    const fsFallback = on => {
-      if (on) { savedHeight = container.style.height; container.style.height = ''; container.classList.add('v3d-fs'); document.documentElement.classList.add('v3d-fs-page'); }
-      else { container.classList.remove('v3d-fs'); document.documentElement.classList.remove('v3d-fs-page'); container.style.height = savedHeight; }
-      map.resize();
-    };
-    const updateFsIcon = () => { if (fsBtn) { fsBtn.innerHTML = isFs() ? SVG.fsExit : SVG.fsEnter; fsBtn.title = isFs() ? 'Vollbild beenden' : 'Vollbild'; } };
-    function toggleFullscreen() {
-      if (isFs()) {
-        if (document.fullscreenElement === container) document.exitFullscreen(); else fsFallback(false);
-      } else if (container.requestFullscreen) {
-        container.requestFullscreen().catch(() => fsFallback(true));
-      } else {
-        fsFallback(true);
-      }
-      setTimeout(updateFsIcon, 50);
-    }
-    document.addEventListener('fullscreenchange', () => { map.resize(); updateFsIcon(); });
-    map.addControl({
-      onAdd() {
-        this.el = h('div', 'maplibregl-ctrl maplibregl-ctrl-group');
-        fsBtn = h('button', 'v3d-fullscreen', SVG.fsEnter); fsBtn.type = 'button'; fsBtn.title = 'Vollbild';
-        fsBtn.onclick = toggleFullscreen; this.el.appendChild(fsBtn); return this.el;
-      },
-      onRemove() { this.el.remove(); },
-    }, 'top-right');
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
     map.addControl({
       onAdd() {
@@ -311,7 +279,7 @@
       if (map.loaded() && map.areTilesLoaded() && map.isSourceLoaded('dem')) { loading.hidden = true; clearInterval(loadPoll); }
     }, 500);
 
-    const api = { map, play, pause, stop, toggleFullscreen, get state() { return state; }, get elapsed() { return elapsed; } };
+    const api = { map, play, pause, stop, get state() { return state; }, get elapsed() { return elapsed; } };
     container.vacation3d = api;
     return api;
   }

@@ -6,7 +6,8 @@ elevation profile. One Gutenberg block, one small plugin per vacation.
 
 ![Overview of the Villnöß hike](docs/screenshot-overview.jpg)
 
-Camera flight, 20 s per day, with pause / stop / 2× / next day and a live HUD:
+Camera flight, 20 s per day, with pause / stop / 2× / next day and a live HUD. The fullscreen
+button (top right) takes the whole block fullscreen, which is the only sensible way on a phone:
 
 ![Camera flight](docs/screenshot-play.jpg)
 

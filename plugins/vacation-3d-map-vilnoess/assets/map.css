@@ -26,6 +26,7 @@
   background: rgba(18, 26, 38, .85); border-radius: 10px; backdrop-filter: blur(6px); }
 .vacation3d-map .v3d-profile[hidden] { display: none; }
 .vacation3d-map .v3d-profile canvas { width: 100%; height: 100%; display: block; }
+.vacation3d-map .maplibregl-ctrl button.v3d-fullscreen svg { width: 18px; height: 18px; margin: 5px; fill: none; stroke: #333; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .vacation3d-map .maplibregl-ctrl button.v3d-profile-toggle svg { width: 20px; height: 20px; margin: 4px; fill: none; stroke: #333; stroke-width: 2; stroke-linejoin: round; }
 .vacation3d-map .maplibregl-ctrl button.v3d-profile-toggle.active { background: #d9e6f5; }
 
@@ -43,3 +44,16 @@
   background: rgba(255, 176, 32, .95); color: #222; font-weight: 600; font-size: 13px;
   padding: 8px 14px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.4); white-space: nowrap; }
 .vacation3d-map .v3d-loading[hidden] { display: none; }
+
+/* fullscreen: native (:fullscreen) and the CSS fallback (.v3d-fs) */
+.vacation3d-map:fullscreen { width: 100vw; height: 100vh; border-radius: 0; }
+.vacation3d-map.v3d-fs { position: fixed !important; inset: 0; width: 100vw; height: 100vh !important; max-width: none; margin: 0;
+  z-index: 2147483000; border-radius: 0; }
+html.v3d-fs-page, html.v3d-fs-page body { overflow: hidden !important; }
+
+/* small screens: HUD under the buttons, smaller labels */
+@media (max-width: 600px) {
+  .vacation3d-map .v3d-hud { left: 10px; top: 58px; height: 32px; font-size: 12px; }
+  .vacation3d-map .v3d-poi .lbl { font-size: 15px; }
+  .vacation3d-map .v3d-profile { height: 90px; }
+}
