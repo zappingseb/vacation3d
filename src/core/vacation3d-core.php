@@ -37,7 +37,13 @@ function vacation3d_register_vacation($maps, $id, $plugin_file, $title, $version
 }
 
 function vacation3d_asset_url($relative) {
-    return plugins_url('../assets/' . $relative, __FILE__);
+    return plugins_url('assets/' . $relative, dirname(__FILE__));
+}
+
+/** Cache-Buster: Änderungsdatum der Datei, damit Browser nach einem Deploy nicht altes JS behalten. */
+function vacation3d_asset_version($relative) {
+    $file = dirname(VACATION3D_CORE_DIR) . '/assets/' . $relative;
+    return is_readable($file) ? (string) filemtime($file) : VACATION3D_CORE_VERSION;
 }
 
 add_action('init', function () {
@@ -64,8 +70,8 @@ function vacation3d_enqueue_frontend($id, $map) {
     $cdn = 'https://unpkg.com/maplibre-gl@' . VACATION3D_MAPLIBRE_VERSION . '/dist/';
     wp_enqueue_style('maplibre-gl', $cdn . 'maplibre-gl.css', array(), VACATION3D_MAPLIBRE_VERSION);
     wp_enqueue_script('maplibre-gl', $cdn . 'maplibre-gl.js', array(), VACATION3D_MAPLIBRE_VERSION, true);
-    wp_enqueue_style('vacation3d-map', vacation3d_asset_url('map.css'), array('maplibre-gl'), VACATION3D_CORE_VERSION);
-    wp_enqueue_script('vacation3d-map', vacation3d_asset_url('map.js'), array('maplibre-gl'), VACATION3D_CORE_VERSION, true);
+    wp_enqueue_style('vacation3d-map', vacation3d_asset_url('map.css'), array('maplibre-gl'), vacation3d_asset_version('map.css'));
+    wp_enqueue_script('vacation3d-map', vacation3d_asset_url('map.js'), array('maplibre-gl'), vacation3d_asset_version('map.js'), true);
     wp_enqueue_script(
         'vacation3d-data-' . $id,
         $map['data_url'],

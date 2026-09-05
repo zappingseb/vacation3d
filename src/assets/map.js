@@ -98,10 +98,15 @@
     TRACKS.features.forEach((f, i) => lineColor.push(f.properties.day, COLORS[i % COLORS.length]));
     lineColor.push('#fff');
 
+    // Phones: 3x displays times terrain times several maps per page exhaust GPU memory, the
+    // canvas then goes black (context lost). Cap the pixel ratio and keep the canvas small.
+    const isTouch = matchMedia('(pointer: coarse)').matches;
     const map = new maplibregl.Map({
       container: canvas,
       ...overview,
       maxPitch: 85, maxZoom: 17,
+      pixelRatio: Math.min(window.devicePixelRatio || 1, isTouch ? 1.5 : 2),
+      maxCanvasSize: isTouch ? [2048, 2048] : [4096, 4096],
       hash: !!cfg.hash,
       attributionControl: { compact: true },
       style: {
@@ -150,6 +155,12 @@
       setTimeout(updateFsIcon, 50);
     }
     document.addEventListener('fullscreenchange', () => { map.resize(); updateFsIcon(); });
+    // make failures visible instead of a silent dark box
+    map.on('error', e => { const msg = e && e.error && e.error.message; if (msg && !/tile/i.test(msg)) { loading.hidden = false; loading.textContent = 'Kartenfehler: ' + msg; } });
+    map.getCanvas().addEventListener('webglcontextlost', () => {
+      loading.hidden = false; loading.innerHTML = 'Grafikspeicher voll – <a href="#" class="v3d-reload">Karte neu laden</a>';
+      loading.querySelector('.v3d-reload').onclick = ev => { ev.preventDefault(); map.remove(); mount(container, overrides, data); };
+    });
     map.addControl({
       onAdd() {
         this.el = h('div', 'maplibregl-ctrl maplibregl-ctrl-group');
@@ -319,13 +330,23 @@
     return api;
   }
 
+  function mountFromDataset(el) {
+    const id = el.dataset.vacation, registry = window.VACATION3D_DATA || {};
+    let cfg = {}; try { cfg = JSON.parse(el.dataset.config || '{}'); } catch (e) { /* keep defaults */ }
+    if (!registry[id]) { el.textContent = `Keine Daten für "${id}".`; return; }
+    try { mount(el, cfg, registry[id]); }
+    catch (err) { el.textContent = 'Karte konnte nicht gestartet werden: ' + (err && err.message || err); console.error('[vacation3d]', err); }
+  }
+  // Maps are created when they come close to the viewport, not all at once on page load:
+  // several terrain maps initialising together is what blackens the canvas on phones.
+  const pending = ('IntersectionObserver' in window) ? new IntersectionObserver(entries => {
+    entries.forEach(en => { if (en.isIntersecting && !en.target.vacation3d) { pending.unobserve(en.target); mountFromDataset(en.target); } });
+  }, { rootMargin: '300px 0px' }) : null;
   function autoInit() {
     document.querySelectorAll('.vacation3d-map[data-vacation]').forEach(el => {
-      if (el.vacation3d) return;
-      const id = el.dataset.vacation, registry = window.VACATION3D_DATA || {};
-      let cfg = {}; try { cfg = JSON.parse(el.dataset.config || '{}'); } catch (e) { /* keep defaults */ }
-      if (!registry[id]) { el.textContent = `Keine Daten für "${id}".`; return; }
-      mount(el, cfg, registry[id]);
+      if (el.vacation3d || el.dataset.v3dQueued) return;
+      el.dataset.v3dQueued = '1';
+      if (pending) pending.observe(el); else mountFromDataset(el);
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', autoInit); else autoInit();

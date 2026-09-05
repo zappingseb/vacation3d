@@ -44,6 +44,7 @@
   background: rgba(255, 176, 32, .95); color: #222; font-weight: 600; font-size: 13px;
   padding: 8px 14px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.4); white-space: nowrap; }
 .vacation3d-map .v3d-loading[hidden] { display: none; }
+.vacation3d-map .v3d-loading a { color: #222; text-decoration: underline; }
 
 /* fullscreen: native (:fullscreen) and the CSS fallback (.v3d-fs) */
 .vacation3d-map:fullscreen { width: 100vw; height: 100vh; border-radius: 0; }
