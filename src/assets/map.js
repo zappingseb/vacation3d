@@ -342,11 +342,19 @@
   const pending = ('IntersectionObserver' in window) ? new IntersectionObserver(entries => {
     entries.forEach(en => { if (en.isIntersecting && !en.target.vacation3d) { pending.unobserve(en.target); mountFromDataset(en.target); } });
   }, { rootMargin: '300px 0px' }) : null;
+  const nearViewport = el => { const r = el.getBoundingClientRect(); return r.bottom > -300 && r.top < window.innerHeight + 300; };
   function autoInit() {
     document.querySelectorAll('.vacation3d-map[data-vacation]').forEach(el => {
       if (el.vacation3d || el.dataset.v3dQueued) return;
       el.dataset.v3dQueued = '1';
-      if (pending) pending.observe(el); else mountFromDataset(el);
+      if (pending) {
+        pending.observe(el);
+        // safety net: observer callbacks need a rendering step; if none came (throttled tab,
+        // odd embed) but the block is on screen, mount anyway
+        setTimeout(() => { if (!el.vacation3d && nearViewport(el)) { pending.unobserve(el); mountFromDataset(el); } }, 2500);
+      } else {
+        mountFromDataset(el);
+      }
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', autoInit); else autoInit();
