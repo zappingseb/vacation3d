@@ -3,8 +3,12 @@
 raw/*
 !raw/README.md
 
-# build output: the zip for wp-admin upload. The plugins/ folders themselves are committed.
+# build output: ./build_plugin.sh assembles plugins/<slug>/ from src/, vacations/ and data/,
+# and zips it into dist/. Both are regenerated, never committed. The deploy tool of the
+# music_blog repo also drops remote backups into plugins/.remote-backup/.
+plugins/
 dist/
+.remote-backup/
 
 .DS_Store
 __pycache__/

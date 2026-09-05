@@ -14,9 +14,11 @@ camera → build → deploy → test post. Do not guess labels or coordinates, a
 - ONE data source per vacation: `vacations/<id>.json` (title, POIs, break names, camera, colours)
   plus the GPX in `raw/<id>/`. `clean_tool/clean_gpx.py --id <id>` bakes both into `data/<id>.js`
   (tracks, breaks, interest_breaks, pois, config). PHP holds no content, only the id.
-- Code: `src/assets/map.js|map.css` (map), `src/core/` (block). Never edit `plugins/` by hand: it is
-  built by `./build_plugin.sh <id>` and committed. Never edit files on the server.
-- Raw and cleaned GPX stay gitignored (`raw/`), they carry timestamps. Only `data/<id>.js` is committed.
+- Code: `src/assets/map.js|map.css` (map), `src/core/` (block). `plugins/` and `dist/` are build
+  output of `./build_plugin.sh <id>`, gitignored: build before every deploy, never edit them, never
+  edit files on the server. The deploy tool writes backups to `plugins/.remote-backup/`, also ignored.
+- Committed per vacation: `vacations/<id>.json` (what you edit), `vacations/<id>.php` (WP header + id),
+  `data/<id>.js` (generated, but the GPX it comes from is gitignored because of the timestamps).
 - `demo/index.html` and the block pass only overrides in data-config (`hash`, `overview.zoom`).
 - MapLibre is pinned to **5.24.0 UMD** (last non-ESM release); WP 6.4.7 has no script-module API.
 - Commit as author "Sebastian Engel-Wolf <sebastian@mail-wolf.de>" (the repo's identity), push to main.

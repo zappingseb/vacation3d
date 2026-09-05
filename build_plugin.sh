@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Assemble the deployable WordPress plugin for one vacation.
 #   ./build_plugin.sh vilnoess
-# -> plugins/vacation-3d-map-vilnoess/  (committed)  and  dist/vacation-3d-map-vilnoess.zip  (ignored)
+# -> plugins/vacation-3d-map-vilnoess/  and  dist/vacation-3d-map-vilnoess.zip   (both gitignored build output)
 # Sources: vacations/<id>.php (plugin header + config), src/core (block), src/assets (map), data/<id>.js (tracks).
 set -euo pipefail
 cd "$(dirname "$0")"

@@ -69,5 +69,5 @@ check labels, breaks, camera flight. Optionally set the post header with
 
 ## 7. Commit
 
-Commit json, data js, the php and the built plugin folder (raw GPX is ignored). Author
+Commit json, data js and the php (raw GPX, plugins/ and dist/ are ignored build input/output). Author
 "Sebastian Engel-Wolf <sebastian@mail-wolf.de>". Update README "vacations" list if there is one.
