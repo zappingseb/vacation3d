@@ -10,23 +10,24 @@ Steps per track:
   5. Douglas-Peucker simplification with DP_TOLERANCE m
   6. median-smooth the elevation (window 5)
 
-Usage:  python3 clean_tool/clean_gpx.py --id vilnoess [--raw raw/vilnoess] [--by-date]
+Usage:  python3 clean_tool/clean_gpx.py --id vilnoess [--config vacation.json] [--raw raw/vilnoess]
 
-Reads raw/<id>/*.gpx (or the --raw folder) and vacations/<id>.json (POIs, break names,
-camera, colours) and writes data/<id>.js, the ONE data file the map needs:
+Reads raw/<id>/*.gpx (or the --raw folder) plus a small vacation config and writes data/<id>.js,
+the ONE file the plugin and the demo need:
   window.VACATION3D_DATA[<id>] = { tracks, breaks, interest_breaks, pois, config }
     tracks           one LineString per day (properties: day, date, dist_km, up_m, down_m, start, end)
-    breaks           unnamed pauses >= 10 min          -> small red dots with popup
-    interest_breaks  pauses named in the json "breaks" -> orange dot + label
-    pois             labelled places from the json, {label, lon, lat} or {label, track, at}
-    config           title, colors, secondsPerDay, exaggeration, overview, follow
-Cleaned GPX copies go next to the raw files (gitignored). Without a json the tool still runs
-and prints the breaks so you can name them; the map then has no POIs and a default camera.
+    breaks           unnamed pauses >= 10 min            -> small red dots with popup
+    interest_breaks  pauses named in config "breaks"     -> orange dot + label
+    pois             labelled places, {label, lon, lat} or {label, track, at: "start"|"end"}
+    config           title, description, days, breaks, colors, secondsPerDay, exaggeration, overview, follow
 
-Day split: by default one GPX file = one day (json "days": "file"). With --by-date (or json
-"days": "date") all points are pooled and grouped by calendar date, for devices that write
-one file per week or several files per day. Raw and cleaned GPX are gitignored (timestamps = where you were when), only the
-generated data/<id>.js is committed.
+The config is a json file (see the new-vacation skill for the example) given with --config.
+Without --config the tool reuses the config embedded in an existing data/<id>.js, so rerunning
+after new GPX files or a cleaning tweak keeps POIs, names and camera. Without either it still
+runs and prints days and breaks, which is how you find the day:minutes keys to name.
+
+Day split: one GPX file = one day by default ("days": "file"); "days": "date" or --by-date pools
+all points and splits by calendar date. Cleaned GPX copies go next to the raw files (gitignored).
 """
 import re, glob, math, json, os, datetime, statistics
 
@@ -146,17 +147,40 @@ def write_gpx(path, name, pts):
                     f'<time>{p["t"].strftime("%Y-%m-%dT%H:%M:%SZ")}</time></trkpt>\n')
         f.write('</trkseg></trk>\n</gpx>\n')
 
+def read_embedded_config(path):
+    """Config and POIs from an existing data/<id>.js, so a rerun does not need the json again."""
+    s = open(path, encoding="utf-8").read()
+    m = re.search(r"window\.VACATION3D_DATA\[\"[^\"]+\"\] = (\{.*?\});\n", s, re.S)
+    if not m:
+        return {}
+    d = json.loads(m.group(1))
+    cfg = dict(d.get("config") or {})
+    cfg["pois"] = d.get("pois") or []
+    if "breaks" not in cfg:   # older files: rebuild the names from the labelled stops
+        cfg["breaks"] = {f"{f['properties']['day']}:{f['properties']['minutes']}": f["properties"]["name"]
+                         for f in (d.get("interest_breaks") or {}).get("features", [])}
+    return cfg
+
+
 def main():
     import argparse
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--id", required=True, help="vacation id, e.g. vilnoess (key in data/<id>.js)")
     ap.add_argument("--raw", default=None, help="folder with the raw GPX files (default raw/<id>)")
     ap.add_argument("--by-date", action="store_true", help="pool all files and split into days by calendar date")
+    ap.add_argument("--config", default=None, help="vacation config json (title, pois, breaks, camera); "
+                                                  "default: the config embedded in an existing data/<id>.js")
     args = ap.parse_args()
-    cfg_path = os.path.join(ROOT, "vacations", f"{args.id}.json")
-    cfg = json.load(open(cfg_path, encoding="utf-8")) if os.path.exists(cfg_path) else {}
-    if not cfg:
-        print(f"note: no {os.path.relpath(cfg_path, ROOT)} yet -- running without POIs/break names")
+    out = os.path.join(ROOT, "data", f"{args.id}.js")
+    if args.config:
+        cfg = json.load(open(args.config, encoding="utf-8"))
+        print(f"config from {args.config}")
+    elif os.path.exists(out):
+        cfg = read_embedded_config(out)
+        print(f"config reused from {os.path.relpath(out, ROOT)}")
+    else:
+        cfg = {}
+        print("note: no config -- running without POIs/break names, see the breaks below to name them")
     names = {}
     for key, label in (cfg.get("breaks") or {}).items():
         day, _, minutes = key.partition(":")
@@ -219,7 +243,8 @@ def main():
               + (f"  -> {label}" if label else ""))
     for (day, minutes), label in names.items():
         print(f"WARNING: no break with day {day} and {minutes} min for --name {label}")
-    config = {k: cfg[k] for k in ("title", "colors", "secondsPerDay", "exaggeration", "overview", "follow") if k in cfg}
+    config = {k: cfg[k] for k in ("title", "description", "days", "breaks", "colors", "secondsPerDay",
+                                  "exaggeration", "overview", "follow") if k in cfg}
     pois = cfg.get("pois") or []
     for poi in pois:
         if "track" in poi and not (0 <= int(poi["track"]) < len(features)):
@@ -227,7 +252,7 @@ def main():
     tracks = dict(type="FeatureCollection", features=features)
     breaks = dict(type="FeatureCollection", features=[f for f in stops if "name" not in f["properties"]])
     interest = dict(type="FeatureCollection", features=[f for f in stops if "name" in f["properties"]])
-    out = os.path.join(ROOT, "data", f"{vacation_id}.js")
+    os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
         f.write("// generated by clean_gpx.py — do not edit by hand\n")
         # registry keyed by vacation id, so several vacation plugins can coexist on one page

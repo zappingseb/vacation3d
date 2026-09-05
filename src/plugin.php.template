@@ -1,0 +1,28 @@
+<?php
+/**
+ * Plugin Name:       Vacation 3d MAP {{TITLE_ASCII}}
+ * Plugin URI:        https://github.com/zappingseb/vacation3d
+ * Description:       {{DESCRIPTION}} Liefert den Gutenberg-Block "Vacation 3D Map" (Dropdown der installierten Urlaube) und registriert den Urlaub "{{ID}}". Generiert von build_plugin.sh im Repo vacation3d -- nicht auf dem Server editieren.
+ * Version:           {{VERSION}}
+ * Author:            Sebastian Engel-Wolf
+ * License:           GPL-2.0-or-later
+ * Requires at least: 6.4
+ * Requires PHP:      7.4
+ *
+ * Ordner:
+ *   {{SLUG}}.php   <- diese Datei, generiert aus src/plugin.php.template
+ *   core/          <- Block-Registrierung, Render-Callback, Editor-Script (lädt nur einmal, egal
+ *                     wie viele Urlaubs-Plugins aktiv sind)
+ *   assets/        <- map.js / map.css
+ *   data/{{ID}}.js <- Tracks, Pausen, POIs, Kamera: die eine Datenquelle, aus clean_tool/clean_gpx.py
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+require_once __DIR__ . '/core/vacation3d-core.php';
+
+add_filter('vacation3d_maps', function ($maps) {
+    return vacation3d_register_vacation($maps, '{{ID}}', __FILE__, '{{TITLE}}', '{{VERSION}}');
+});

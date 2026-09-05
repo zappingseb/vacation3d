@@ -26,22 +26,10 @@ function vacation3d_maps() {
     return is_array($maps) ? $maps : array();
 }
 
-/**
- * Helfer für die Urlaubs-Plugins: liest Titel aus data/<id>.json neben der Plugin-Datei
- * und trägt den Urlaub ein. $plugin_file ist __FILE__ des aufrufenden Plugins.
- */
-function vacation3d_register_vacation($maps, $id, $plugin_file, $version = '1.0.0') {
-    $dir   = dirname($plugin_file);
-    $title = $id;
-    $json  = $dir . '/data/' . $id . '.json';
-    if (is_readable($json)) {
-        $cfg = json_decode(file_get_contents($json), true);
-        if (is_array($cfg) && !empty($cfg['title'])) {
-            $title = $cfg['title'];
-        }
-    }
+/** Helfer für die generierten Urlaubs-Plugins: trägt den Urlaub in die Liste ein. */
+function vacation3d_register_vacation($maps, $id, $plugin_file, $title, $version = '1.0.0') {
     $maps[$id] = array(
-        'title'    => $title,
+        'title'    => $title !== '' ? $title : $id,
         'version'  => $version,
         'data_url' => plugins_url('data/' . $id . '.js', $plugin_file),
     );
