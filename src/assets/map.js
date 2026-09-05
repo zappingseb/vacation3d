@@ -213,19 +213,20 @@
     }, 'top-right');
     map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
 
-    // labelled places
+    // labelled places. MapLibre fades markers it thinks are hidden behind terrain to 20 %;
+    // with the steep camera that hits half the huts, so opacityWhenCovered is set to 1 everywhere.
     const trackPoint = (i, at) => { const c = TRACKS.features[i] && TRACKS.features[i].geometry.coordinates; return c && (at === 'start' ? c[0] : c[c.length - 1]); };
     for (const p of cfg.pois) {
       const pt = p.lon !== undefined ? [p.lon, p.lat] : trackPoint(p.track, p.at);
       if (!pt) continue;
       const el = h('div', 'v3d-poi', `<div class="dot"></div><div class="lbl">${p.label}</div>`);
-      new maplibregl.Marker({ element: el, anchor: 'top' }).setLngLat([pt[0], pt[1]]).addTo(map);
+      new maplibregl.Marker({ element: el, anchor: 'top', opacityWhenCovered: '1' }).setLngLat([pt[0], pt[1]]).addTo(map);
     }
     // named stops (data.interest_breaks): labelled like the huts, smaller and orange
     for (const f of INTEREST.features) {
       const el = h('div', 'v3d-poi v3d-poi--break', `<div class="dot"></div><div class="lbl">${f.properties.name}</div>`);
       el.title = `Tag ${f.properties.day}, ${f.properties.time} UTC, Pause ${f.properties.minutes} min`;
-      new maplibregl.Marker({ element: el, anchor: 'top' }).setLngLat([f.geometry.coordinates[0], f.geometry.coordinates[1]]).addTo(map);
+      new maplibregl.Marker({ element: el, anchor: 'top', opacityWhenCovered: '1' }).setLngLat([f.geometry.coordinates[0], f.geometry.coordinates[1]]).addTo(map);
     }
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
     map.on('mouseenter', 'breaks', e => {
@@ -259,7 +260,7 @@
 
     // ---------------------------------------------------------------- player
     const hikerEl = h('div', 'v3d-hiker');
-    const hiker = new maplibregl.Marker({ element: hikerEl });
+    const hiker = new maplibregl.Marker({ element: hikerEl, opacityWhenCovered: '1' });
     const SPD = cfg.secondsPerDay, TOTAL_S = SPD * DAYS.length;
     let state = 'idle', elapsed = 0, lastFrame = null, raf = 0, follow = true, cursorKm = null, speed = 1, camReady = false, frameNo = 0;
 
@@ -322,7 +323,7 @@
 
     // ---------------------------------------------------------------- elevation profile
     const ctx = cv.getContext('2d');
-    const hoverMarker = new maplibregl.Marker({ color: '#fff', scale: 0.7 });
+    const hoverMarker = new maplibregl.Marker({ color: '#fff', scale: 0.7, opacityWhenCovered: '1' });
     function drawProfile() {
       if (profileEl.hidden || !PROFILE.length) return;
       const dpr = window.devicePixelRatio || 1;
