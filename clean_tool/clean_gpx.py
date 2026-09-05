@@ -10,12 +10,22 @@ Steps per track:
   5. Douglas-Peucker simplification with DP_TOLERANCE m
   6. median-smooth the elevation (window 5)
 
-Usage:  python3 clean_tool/clean_gpx.py --id vilnoess [--raw raw/vilnoess]
+Usage:  python3 clean_tool/clean_gpx.py --id vilnoess [--raw raw/vilnoess] [--by-date]
 
-Reads raw/<id>/*.gpx (or the --raw folder), writes data/<id>.js with three GeoJSON sets
-under window.VACATION3D_DATA[<id>]: tracks (one LineString per day), breaks (unnamed
-pauses >= 10 min, shown as small dots) and interest_breaks (pauses you named with --name,
-shown with a label like the huts). Cleaned GPX copies go next to the raw files. Raw and cleaned GPX are gitignored (timestamps = where you were when), only the
+Reads raw/<id>/*.gpx (or the --raw folder) and vacations/<id>.json (POIs, break names,
+camera, colours) and writes data/<id>.js, the ONE data file the map needs:
+  window.VACATION3D_DATA[<id>] = { tracks, breaks, interest_breaks, pois, config }
+    tracks           one LineString per day (properties: day, date, dist_km, up_m, down_m, start, end)
+    breaks           unnamed pauses >= 10 min          -> small red dots with popup
+    interest_breaks  pauses named in the json "breaks" -> orange dot + label
+    pois             labelled places from the json, {label, lon, lat} or {label, track, at}
+    config           title, colors, secondsPerDay, exaggeration, overview, follow
+Cleaned GPX copies go next to the raw files (gitignored). Without a json the tool still runs
+and prints the breaks so you can name them; the map then has no POIs and a default camera.
+
+Day split: by default one GPX file = one day (json "days": "file"). With --by-date (or json
+"days": "date") all points are pooled and grouped by calendar date, for devices that write
+one file per week or several files per day. Raw and cleaned GPX are gitignored (timestamps = where you were when), only the
 generated data/<id>.js is committed.
 """
 import re, glob, math, json, os, datetime, statistics
@@ -141,15 +151,17 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--id", required=True, help="vacation id, e.g. vilnoess (key in data/<id>.js)")
     ap.add_argument("--raw", default=None, help="folder with the raw GPX files (default raw/<id>)")
-    ap.add_argument("--name", action="append", default=[], metavar="DAY:MINUTES=LABEL",
-                    help="name a detected break, e.g. 2:54=Geisleralm (see the 'breaks' lines printed by a first run); "
-                         "named breaks move from BREAKS to INTEREST_BREAKS")
+    ap.add_argument("--by-date", action="store_true", help="pool all files and split into days by calendar date")
     args = ap.parse_args()
+    cfg_path = os.path.join(ROOT, "vacations", f"{args.id}.json")
+    cfg = json.load(open(cfg_path, encoding="utf-8")) if os.path.exists(cfg_path) else {}
+    if not cfg:
+        print(f"note: no {os.path.relpath(cfg_path, ROOT)} yet -- running without POIs/break names")
     names = {}
-    for spec in args.name:
-        key, _, label = spec.partition("=")
+    for key, label in (cfg.get("breaks") or {}).items():
         day, _, minutes = key.partition(":")
         names[(int(day), int(minutes))] = label.strip()
+    by_date = args.by_date or cfg.get("days") == "date"
     vacation_id = args.id
     raw_dir = args.raw or os.path.join(ROOT, "raw", vacation_id)
     cleaned_dir = os.path.join(raw_dir, "cleaned"); os.makedirs(cleaned_dir, exist_ok=True)
@@ -157,8 +169,22 @@ def main():
     if not gpx_files:
         raise SystemExit(f"no *.gpx in {raw_dir}")
     features, stops = [], []
-    for idx, path in enumerate(gpx_files):
-        name, raw = parse(path)
+    if by_date:
+        pool = []
+        for path in gpx_files:
+            pool += parse(path)[1]
+        pool.sort(key=lambda p: p["t"])
+        days_in = []
+        for p in pool:
+            key = p["t"].date().isoformat()
+            if not days_in or days_in[-1][0] != key:
+                days_in.append((key, []))
+            days_in[-1][1].append(p)
+        print(f"{len(gpx_files)} file(s) pooled into {len(days_in)} day(s) by date")
+    else:
+        days_in = [(os.path.basename(path), parse(path)[1]) for path in gpx_files]
+    for idx, (label, raw) in enumerate(days_in):
+        path = label
         pts = drop_dupes_and_outliers(raw)
         # the device kept a few fixes from the previous evening: drop everything
         # before a gap > 3 h if that leading part is only a handful of points
@@ -172,7 +198,8 @@ def main():
         pts = smooth_ele(pts)
         day = pts[0]["t"].strftime("%Y-%m-%d")
         st = stats(pts)
-        print(f"{os.path.basename(path)}: {len(raw)} -> {len(pts)} pts, {st}")
+        print(f"day {idx + 1} <- {path}: {len(raw)} -> {len(pts)} pts, {st['dist_km']} km, +{st['up_m']}/-{st['down_m']} m, "
+              f"{st['start'][11:16]}-{st['end'][11:16]} UTC")
         write_gpx(os.path.join(cleaned_dir, f"day{idx + 1}_{day}.gpx"), f"Day {idx + 1} {day}", pts)
         features.append(dict(type="Feature",
                              properties=dict(day=idx + 1, date=day, name=f"Day {idx + 1}", **st),
@@ -192,6 +219,11 @@ def main():
               + (f"  -> {label}" if label else ""))
     for (day, minutes), label in names.items():
         print(f"WARNING: no break with day {day} and {minutes} min for --name {label}")
+    config = {k: cfg[k] for k in ("title", "colors", "secondsPerDay", "exaggeration", "overview", "follow") if k in cfg}
+    pois = cfg.get("pois") or []
+    for poi in pois:
+        if "track" in poi and not (0 <= int(poi["track"]) < len(features)):
+            print(f"WARNING: poi {poi.get('label')!r} refers to track {poi['track']}, but there are {len(features)} days")
     tracks = dict(type="FeatureCollection", features=features)
     breaks = dict(type="FeatureCollection", features=[f for f in stops if "name" not in f["properties"]])
     interest = dict(type="FeatureCollection", features=[f for f in stops if "name" in f["properties"]])
@@ -201,11 +233,12 @@ def main():
         # registry keyed by vacation id, so several vacation plugins can coexist on one page
         f.write("window.VACATION3D_DATA = window.VACATION3D_DATA || {};\n")
         f.write("window.VACATION3D_DATA[" + json.dumps(vacation_id) + "] = "
-                + json.dumps(dict(tracks=tracks, breaks=breaks, interest_breaks=interest)) + ";\n")
+                + json.dumps(dict(tracks=tracks, breaks=breaks, interest_breaks=interest, pois=pois, config=config),
+                             ensure_ascii=False) + ";\n")
         # plain constants for standalone pages
-        for const, key in (("TRACKS", "tracks"), ("BREAKS", "breaks"), ("INTEREST_BREAKS", "interest_breaks")):
+        for const, key in (("TRACKS", "tracks"), ("BREAKS", "breaks"), ("INTEREST_BREAKS", "interest_breaks"), ("POIS", "pois")):
             f.write(f"const {const} = window.VACATION3D_DATA[{json.dumps(vacation_id)}].{key};\n")
-    print(f"{len(breaks['features'])} breaks, {len(interest['features'])} named stops -> {os.path.relpath(out, ROOT)}")
+    print(f"{len(breaks['features'])} breaks, {len(interest['features'])} named stops, {len(pois)} pois -> {os.path.relpath(out, ROOT)}")
 
 if __name__ == "__main__":
     main()

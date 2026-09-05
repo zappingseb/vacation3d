@@ -16,11 +16,12 @@
  * NICHT auf dem Server editieren -- der nächste Build/Deploy überschreibt alles.
  *
  * Ordner nach dem Build:
- *   vacation-3d-map-vilnoess.php  <- diese Datei: registriert den Urlaub (Konfiguration unten)
+ *   vacation-3d-map-vilnoess.php  <- diese Datei: registriert den Urlaub (nur die ID)
  *   core/                          <- Block-Registrierung, Render-Callback, Editor-Script
  *                                     (identisch in jedem Urlaubs-Plugin, lädt nur einmal)
  *   assets/map.js, map.css         <- die Kartenlogik (src/assets im Repo)
- *   data/vilnoess.js               <- die bereinigten GPX-Tracks, generiert von clean_tool/clean_gpx.py
+ *   data/vilnoess.js               <- Tracks, Pausen, POIs und Kamera, generiert von clean_tool/clean_gpx.py
+ *   data/vilnoess.json             <- die Quelle dafür (Kopie von vacations/vilnoess.json), liefert den Titel
  */
 
 if (!defined('ABSPATH')) {
@@ -30,30 +31,10 @@ if (!defined('ABSPATH')) {
 require_once __DIR__ . '/core/vacation3d-core.php';
 
 /**
- * Diesen Urlaub für den Block anmelden. Der Schlüssel ('vilnoess') ist die ID,
- * die der Block als Attribut speichert, und muss zum Namen in data/vilnoess.js passen.
+ * Diesen Urlaub für den Block anmelden. Alles Inhaltliche (Titel, POIs, Pausen-Namen,
+ * Kamera, Farben) steht in vacations/<id>.json im Repo und landet über clean_gpx.py in
+ * data/<id>.js -- hier steht nur, WELCHER Urlaub das ist. Kein zweiter Datenort.
  */
 add_filter('vacation3d_maps', function ($maps) {
-    $maps['vilnoess'] = array(
-        'title'    => 'Villnöß – Geisler-Umrundung 2026',
-        'version'  => '1.0.0',
-        'data_url' => plugins_url('data/vilnoess.js', __FILE__),
-        'config'   => array(
-            'title'          => 'Geisler-Umrundung, Villnöß',
-            'colors'         => array('#ff3b1f', '#ffb020', '#25d0ff'),
-            'secondsPerDay'  => 20,
-            'exaggeration'   => 1.3,
-            'overview'       => array('center' => array(11.762, 46.636), 'zoom' => 12.6, 'pitch' => 58, 'bearing' => 160),
-            'follow'         => array('zoom' => 13.4, 'pitch' => 62),
-            // Beschriftete Orte: feste Koordinaten oder Anfang/Ende eines Tages (0-basiert).
-            'pois'           => array(
-                array('label' => 'Guggan (Bus)',        'lon' => 11.794135, 'lat' => 46.661176),
-                array('label' => 'Edelweißhütte',       'lon' => 11.768567, 'lat' => 46.666813),
-                array('label' => 'Gampenalm',           'track' => 0, 'at' => 'end'),
-                array('label' => 'Brogleshütte',        'track' => 1, 'at' => 'end'),
-                array('label' => 'St. Magdalena (Bus)', 'track' => 2, 'at' => 'end'),
-            ),
-        ),
-    );
-    return $maps;
+    return vacation3d_register_vacation($maps, 'vilnoess', __FILE__, '1.0.0');
 });

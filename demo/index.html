@@ -12,22 +12,7 @@
 <style> html, body { margin: 0; height: 100%; } #demo { position: absolute; inset: 0; border-radius: 0; } </style>
 </head>
 <body>
-<!-- Same markup the WordPress block renders; the config mirrors vacations/vilnoess.php. -->
-<div id="demo" class="vacation3d-map" data-vacation="vilnoess" data-config='{
-  "title": "Geisler-Umrundung, Villnöß",
-  "colors": ["#ff3b1f", "#ffb020", "#25d0ff"],
-  "secondsPerDay": 20,
-  "exaggeration": 1.3,
-  "overview": { "center": [11.762, 46.636], "zoom": 12.6, "pitch": 58, "bearing": 160 },
-  "follow": { "zoom": 13.4, "pitch": 62 },
-  "pois": [
-    { "label": "Guggan (Bus)",        "lon": 11.794135, "lat": 46.661176 },
-    { "label": "Edelweißhütte",       "lon": 11.768567, "lat": 46.666813 },
-    { "label": "Gampenalm",           "track": 0, "at": "end" },
-    { "label": "Brogleshütte",        "track": 1, "at": "end" },
-    { "label": "St. Magdalena (Bus)", "track": 2, "at": "end" }
-  ],
-  "hash": true
-}'></div>
+<!-- Same markup the WordPress block renders. Everything else comes from ../data/vilnoess.js. -->
+<div id="demo" class="vacation3d-map" data-vacation="vilnoess" data-config='{ "hash": true }'></div>
 </body>
 </html>

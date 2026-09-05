@@ -4,27 +4,34 @@
 plugin per vacation. Started 2026-09-04 as prototype in `~/Documents/git/3dmap` (retired),
 continued here. Owner: Sebastian (zappingseb), blog https://engel-wolf.com (theme "engelwolf").
 
+## Adding or changing a vacation → use the `new-vacation` skill
+
+It is an interview: GPX files → confirm the day split → name each break or not → POIs →
+camera → build → deploy → test post. Do not guess labels or coordinates, ask.
+
 ## Working rules
 
-- Source of truth: `src/assets/map.js|map.css` (map), `src/core/` (block), `vacations/<id>.php`
-  (per-vacation config), `data/<id>.js` (generated). Never edit `plugins/` by hand: it is
+- ONE data source per vacation: `vacations/<id>.json` (title, POIs, break names, camera, colours)
+  plus the GPX in `raw/<id>/`. `clean_tool/clean_gpx.py --id <id>` bakes both into `data/<id>.js`
+  (tracks, breaks, interest_breaks, pois, config). PHP holds no content, only the id.
+- Code: `src/assets/map.js|map.css` (map), `src/core/` (block). Never edit `plugins/` by hand: it is
   built by `./build_plugin.sh <id>` and committed. Never edit files on the server.
 - Raw and cleaned GPX stay gitignored (`raw/`), they carry timestamps. Only `data/<id>.js` is committed.
-- Config lives in PHP (`vacations/<id>.php`) and is mirrored in `demo/index.html` (data-config JSON).
-  Change both.
+- `demo/index.html` and the block pass only overrides in data-config (`hash`, `overview.zoom`).
 - MapLibre is pinned to **5.24.0 UMD** (last non-ESM release); WP 6.4.7 has no script-module API.
 - Commit as author "Sebastian Engel-Wolf <sebastian@mail-wolf.de>" (the repo's identity), push to main.
 
 ## Data pipeline
 
 ```bash
-python3 clean_tool/clean_gpx.py --id vilnoess --name 2:54=Geisleralm --name 3:28=Waldschenke
-./build_plugin.sh vilnoess          # -> plugins/vacation-3d-map-vilnoess + dist/*.zip
-python3 -m http.server 8766         # demo: http://localhost:8766/demo/index.html
+python3 clean_tool/clean_gpx.py --id vilnoess   # reads raw/vilnoess/*.gpx + vacations/vilnoess.json
+./build_plugin.sh vilnoess                       # -> plugins/vacation-3d-map-vilnoess + dist/*.zip
+python3 -m http.server 8766                      # demo: http://localhost:8766/demo/index.html
 ```
-`data/<id>.js` = `window.VACATION3D_DATA[id] = {tracks, breaks, interest_breaks}` plus the
-constants TRACKS / BREAKS / INTEREST_BREAKS. Named stops (`--name DAY:MIN=Label`) move from
-breaks to interest_breaks and render once, orange with label.
+`data/<id>.js` = `window.VACATION3D_DATA[id] = {tracks, breaks, interest_breaks, pois, config}` plus
+constants TRACKS / BREAKS / INTEREST_BREAKS / POIS. Break names in the json (`"breaks": {"2:54": "Geisleralm"}`,
+day:minutes) move a pause from breaks to interest_breaks (orange, labelled). `"days": "date"` or
+`--by-date` pools all GPX points and splits by calendar date.
 
 ## Deploy and test on the blog (it is a dev system, owner's words)
 

@@ -26,6 +26,28 @@ function vacation3d_maps() {
     return is_array($maps) ? $maps : array();
 }
 
+/**
+ * Helfer für die Urlaubs-Plugins: liest Titel aus data/<id>.json neben der Plugin-Datei
+ * und trägt den Urlaub ein. $plugin_file ist __FILE__ des aufrufenden Plugins.
+ */
+function vacation3d_register_vacation($maps, $id, $plugin_file, $version = '1.0.0') {
+    $dir   = dirname($plugin_file);
+    $title = $id;
+    $json  = $dir . '/data/' . $id . '.json';
+    if (is_readable($json)) {
+        $cfg = json_decode(file_get_contents($json), true);
+        if (is_array($cfg) && !empty($cfg['title'])) {
+            $title = $cfg['title'];
+        }
+    }
+    $maps[$id] = array(
+        'title'    => $title,
+        'version'  => $version,
+        'data_url' => plugins_url('data/' . $id . '.js', $plugin_file),
+    );
+    return $maps;
+}
+
 function vacation3d_asset_url($relative) {
     return plugins_url('../assets/' . $relative, __FILE__);
 }
@@ -76,14 +98,12 @@ function vacation3d_render_block($attributes) {
     }
     $map    = $maps[$id];
     $height = isset($attributes['height']) ? max(240, (int) $attributes['height']) : 600;
-    $config = isset($map['config']) && is_array($map['config']) ? $map['config'] : array();
+    // data-config trägt nur Block-Overrides; Inhalt und Kamera kommen aus data/<id>.js.
     // Block-Attribut "zoom" überschreibt den Startzoom des Urlaubs (0 = nicht gesetzt).
+    $config = array();
     $zoom = isset($attributes['zoom']) ? (float) $attributes['zoom'] : 0;
     if ($zoom > 0) {
-        if (!isset($config['overview']) || !is_array($config['overview'])) {
-            $config['overview'] = array();
-        }
-        $config['overview']['zoom'] = $zoom;
+        $config['overview'] = array('zoom' => $zoom);
     }
 
     vacation3d_enqueue_frontend($id, $map);

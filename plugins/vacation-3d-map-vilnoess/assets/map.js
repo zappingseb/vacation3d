@@ -4,12 +4,12 @@
  *   Vacation3D.mount(container, config, data)
  *
  * container: a block element; gets the map canvas, player, HUD and elevation profile injected.
- * config:    { title, colors[], secondsPerDay, exaggeration, overview{center,zoom,pitch,bearing},
- *              follow{zoom,pitch}, pois[ {label, lon, lat} | {label, track, at:'start'|'end'} ],
- *              autoplay?, hash? }
- * data:      { tracks: FeatureCollection<LineString [lon,lat,ele]>, breaks: FeatureCollection<Point>,
- *              interest_breaks: FeatureCollection<Point with properties.name> }
- *            as written by clean_tool/clean_gpx.py.
+ * overrides: presentation overrides on top of data.config, e.g. { overview: { zoom: 12 }, hash: true, autoplay: true }
+ * data:      written by clean_tool/clean_gpx.py from the GPX files and vacations/<id>.json:
+ *            { tracks: FeatureCollection<LineString [lon,lat,ele]>, breaks: FeatureCollection<Point>,
+ *              interest_breaks: FeatureCollection<Point with properties.name>,
+ *              pois: [ {label, lon, lat} | {label, track, at:'start'|'end'} ],
+ *              config: { title, colors[], secondsPerDay, exaggeration, overview{center,zoom,pitch,bearing}, follow{zoom,pitch} } }
  *
  * Auto-init: every element .vacation3d-map[data-vacation][data-config] is mounted on DOMContentLoaded
  * with data from window.VACATION3D_DATA[data-vacation]. Needs the global `maplibregl` (UMD build).
@@ -32,7 +32,6 @@
     secondsPerDay: 20,
     exaggeration: 1.3,
     follow: { zoom: 13.4, pitch: 62 },
-    pois: [],
     imagery: {
       tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
       attribution: 'Imagery © Esri, Maxar, Earthstar Geographics', maxzoom: 18,
@@ -62,10 +61,14 @@
     return b;
   }
 
-  function mount(container, userConfig, data) {
+  function mount(container, overrides, data) {
     if (typeof maplibregl === 'undefined') { container.textContent = 'MapLibre GL fehlt.'; return null; }
     if (!data || !data.tracks) { container.textContent = 'Keine Track-Daten.'; return null; }
-    const cfg = { ...DEFAULTS, ...userConfig, follow: { ...DEFAULTS.follow, ...(userConfig.follow || {}) } };
+    const base = data.config || {}, over = overrides || {};
+    const cfg = { ...DEFAULTS, ...base, ...over,
+      follow: { ...DEFAULTS.follow, ...(base.follow || {}), ...(over.follow || {}) },
+      overview: (base.overview || over.overview) ? { ...(base.overview || {}), ...(over.overview || {}) } : undefined,
+      pois: data.pois || [] };
     const EMPTY = { type: 'FeatureCollection', features: [] };
     const TRACKS = data.tracks, BREAKS = data.breaks || EMPTY, INTEREST = data.interest_breaks || EMPTY;
     const COLORS = cfg.colors;
