@@ -58,3 +58,7 @@ html.v3d-fs-page, html.v3d-fs-page body { overflow: hidden !important; }
   .vacation3d-map .v3d-poi .lbl { font-size: 15px; }
   .vacation3d-map .v3d-profile { height: 90px; }
 }
+
+/* ?v3ddebug log panel */
+.vacation3d-map .v3d-debug { position: absolute; left: 0; right: 0; bottom: 0; max-height: 45%; overflow: auto; z-index: 5;
+  background: rgba(0,0,0,.8); color: #9f9; font: 10px/1.35 Menlo, Consolas, monospace; padding: 6px 8px; white-space: pre-wrap; word-break: break-all; }

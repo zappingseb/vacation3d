@@ -106,7 +106,13 @@ function vacation3d_render_block($attributes) {
     if (!empty($attributes['align'])) {
         $classes .= ' align' . sanitize_html_class($attributes['align']);
     }
-    return sprintf(
+    $debug = '';
+    if (isset($_GET['v3ddebug'])) {
+        // Fängt Fehler ab, die passieren, bevor map.js sein Log-Panel aufbauen kann (z. B. ein
+        // Syntaxfehler in map.js selbst auf alten Browsern), und schreibt sie in den Block.
+        $debug = '<script>window.__v3dErrors=window.__v3dErrors||[];window.addEventListener("error",function(e){var m=(e.message||"")+" @"+(e.filename||"").split("/").pop()+":"+e.lineno;window.__v3dErrors.push(m);var el=document.querySelector(".vacation3d-map");if(el&&!el.querySelector(".v3d-debug")){var p=document.createElement("pre");p.className="v3d-debug";p.style.cssText="position:absolute;left:0;right:0;bottom:0;max-height:45%;overflow:auto;z-index:5;background:rgba(0,0,0,.8);color:#f99;font:10px/1.35 Menlo,monospace;padding:6px 8px;white-space:pre-wrap;word-break:break-all;margin:0";el.appendChild(p);}var pp=el&&el.querySelector(".v3d-debug");if(pp){pp.textContent+="error: "+m+"\n";}});window.addEventListener("load",function(){setTimeout(function(){var el=document.querySelector(".vacation3d-map");if(el&&!el.vacation3d&&!el.querySelector(".v3d-debug")){var p=document.createElement("pre");p.className="v3d-debug";p.style.cssText="position:absolute;left:0;right:0;bottom:0;z-index:5;background:rgba(0,0,0,.8);color:#f99;font:10px Menlo,monospace;padding:6px 8px;margin:0";p.textContent="map.js did not mount within 4 s after load. maplibregl: "+typeof window.maplibregl+", data: "+typeof window.VACATION3D_DATA+", Vacation3D: "+typeof window.Vacation3D;el.appendChild(p);}},4000);});</script>';
+    }
+    return $debug . sprintf(
         '<div class="%s" data-vacation="%s" data-config="%s" style="height:%dpx"></div>',
         esc_attr($classes),
         esc_attr($id),

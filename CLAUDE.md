@@ -69,6 +69,9 @@ WP_PWD (application password) and the FTP login. WP REST works via `?rest_route=
 - Two `raster-dem` sources (terrain + hillshade) or MapLibre warns.
 - iOS has no Fullscreen API for elements → CSS fallback class `v3d-fs` (position fixed).
 - Headless Chrome with `--virtual-time-budget` never reaches map `idle`; use the real Chrome tab.
+- Debugging on a phone: open the post with `?v3ddebug` (e.g. `https://engel-wolf.com/?p=5064&v3ddebug`);
+  map.js then writes a log panel into the block (WebGL support, tile loading, errors, context loss,
+  rAF frames) and the PHP adds an early error catcher. Ask for a screenshot of that panel.
 
 ## Ideas not done
 

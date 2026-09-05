@@ -27,6 +27,17 @@
     fsEnter: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>',
     fsExit:  '<svg viewBox="0 0 24 24"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></svg>',
   };
+  // Debug mode: append ?v3ddebug to the page URL -> a log panel inside the block (for phones,
+  // where there is no console). Also collects errors that happened before this script ran.
+  const DEBUG = /v3ddebug/.test(location.search + location.hash);
+  function dbg(container, msg) {
+    if (!DEBUG) return;
+    const t = ((performance.now() / 1000).toFixed(1) + 's').padStart(6);
+    console.log('[vacation3d]', msg);
+    let panel = container && container.querySelector('.v3d-debug');
+    if (container && !panel) { panel = h('div', 'v3d-debug'); container.appendChild(panel); }
+    if (panel) { panel.textContent += `${t} ${msg}\n`; panel.scrollTop = panel.scrollHeight; }
+  }
   const DEFAULTS = {
     colors: ['#ff3b1f', '#ffb020', '#25d0ff', '#8cff5e', '#e07bff', '#ffffff'],
     secondsPerDay: 20,
@@ -76,6 +87,13 @@
     // ---------------------------------------------------------------- DOM
     container.classList.add('vacation3d-map');
     container.innerHTML = '';
+    if (DEBUG) {
+      const probe = document.createElement('canvas');
+      const gl2 = !!probe.getContext('webgl2'), gl1 = !!probe.getContext('webgl');
+      dbg(container, `mount ${container.dataset.vacation || ''} · ${container.clientWidth}x${container.clientHeight}px · dpr ${window.devicePixelRatio} · maplibre ${maplibregl.getVersion ? maplibregl.getVersion() : maplibregl.version} · webgl2 ${gl2} webgl1 ${gl1} · visible ${document.visibilityState}`);
+      dbg(container, navigator.userAgent);
+      (window.__v3dErrors || []).forEach(e => dbg(container, 'early error: ' + e));
+    }
     const canvas = h('div', 'v3d-canvas');
     const loading = h('div', 'v3d-loading', 'Gelände und Luftbilder werden geladen …');
     const player = h('div', 'v3d-player'); player.dataset.state = 'idle';
@@ -156,7 +174,21 @@
     }
     document.addEventListener('fullscreenchange', () => { map.resize(); updateFsIcon(); });
     // make failures visible instead of a silent dark box
-    map.on('error', e => { const msg = e && e.error && e.error.message; if (msg && !/tile/i.test(msg)) { loading.hidden = false; loading.textContent = 'Kartenfehler: ' + msg; } });
+    map.on('error', e => { const msg = e && e.error && e.error.message; dbg(container, 'error: ' + msg + (e.sourceId ? ' [' + e.sourceId + ']' : '')); if (msg && !/tile/i.test(msg)) { loading.hidden = false; loading.textContent = 'Kartenfehler: ' + msg; } });
+    if (DEBUG) {
+      dbg(container, `map created · pixelRatio ${map.getPixelRatio()} · canvas ${map.getCanvas().width}x${map.getCanvas().height}`);
+      const seen = {};
+      map.on('sourcedata', e => { if (e.sourceId && e.tile && !seen[e.sourceId]) { seen[e.sourceId] = 1; dbg(container, `first tile data: ${e.sourceId}`); } });
+      map.on('load', () => dbg(container, 'event load'));
+      map.once('idle', () => dbg(container, 'event idle (everything rendered)'));
+      map.on('webglcontextlost', () => dbg(container, 'WEBGL CONTEXT LOST'));
+      map.on('webglcontextrestored', () => dbg(container, 'webgl context restored'));
+      document.addEventListener('visibilitychange', () => dbg(container, 'visibility ' + document.visibilityState));
+      let ticks = 0, tickStart = performance.now();
+      (function tick() { ticks++; if (performance.now() - tickStart < 5000) requestAnimationFrame(tick); else dbg(container, `rAF frames in 5 s: ${ticks}`); })();
+      const srcState = id => { try { return map.getSource(id) ? map.isSourceLoaded(id) : 'missing'; } catch (e) { return 'n/a'; } };
+      let n = 0; const iv = setInterval(() => { n++; dbg(container, `t+${n * 3}s visible ${document.visibilityState} · loaded ${map.loaded()} · tiles ${map.areTilesLoaded()} · dem ${srcState('dem')} · imagery ${srcState('imagery')}`); if (n >= 6) clearInterval(iv); }, 3000);
+    }
     map.getCanvas().addEventListener('webglcontextlost', () => {
       loading.hidden = false; loading.innerHTML = 'Grafikspeicher voll – <a href="#" class="v3d-reload">Karte neu laden</a>';
       loading.querySelector('.v3d-reload').onclick = ev => { ev.preventDefault(); map.remove(); mount(container, overrides, data); };
@@ -332,6 +364,7 @@
 
   function mountFromDataset(el) {
     const id = el.dataset.vacation, registry = window.VACATION3D_DATA || {};
+    dbg(el, `mountFromDataset ${id} · data ${!!registry[id]} · maplibregl ${typeof maplibregl} · readyState ${document.readyState}`);
     let cfg = {}; try { cfg = JSON.parse(el.dataset.config || '{}'); } catch (e) { /* keep defaults */ }
     if (!registry[id]) { el.textContent = `Keine Daten für "${id}".`; return; }
     try { mount(el, cfg, registry[id]); }
@@ -347,6 +380,7 @@
     document.querySelectorAll('.vacation3d-map[data-vacation]').forEach(el => {
       if (el.vacation3d || el.dataset.v3dQueued) return;
       el.dataset.v3dQueued = '1';
+      dbg(el, `autoInit queued (${pending ? 'IntersectionObserver' : 'direct'}) · readyState ${document.readyState}`);
       if (pending) {
         pending.observe(el);
         // safety net: observer callbacks need a rendering step; if none came (throttled tab,
